@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marcador — Torneo Exalumnos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a;
+      --bg-2: #0e0e0e;
+      --bg-3: #1a1a1a;
+      --border: #262626;
+      --border-2: #333;
+      --text: #f5f5f5;
+      --text-dim: #a3a3a3;
+      --text-mute: #6b7280;
+      --accent: #f59e0b;
+      --accent-2: #fbbf24;
+      --success: #10b981;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+    }
+    html, body {
+      min-height: 100vh;
+      font-family: 'Barlow Condensed', sans-serif;
+      background: #000;
+      color: var(--text);
+      letter-spacing: 0.02em;
+      overflow: hidden;
+    }
+
+    /* ───── SELECTOR DE PARTIDO (esquina superior) ───── */
+    .game-selector {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 50;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(19, 19, 19, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+    }
+    .game-selector label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      font-weight: 700;
+    }
+    .game-selector select {
+      background: var(--bg);
+      border: 1px solid var(--border-2);
+      color: var(--text);
+      padding: 6px 28px 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      max-width: 280px;
+    }
+    .game-selector select:focus { outline: none; border-color: var(--accent); }
+    .game-selector .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+    .badge.live { background: rgba(220, 38, 38, 0.2); color: #fca5a5; }
+    .badge.live::before { content: '●'; margin-right: 4px; animation: pulse 1.5s infinite; }
+    .badge.scheduled { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .badge.completed { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+    .badge.cancelled { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ───── ESTADOS DE PANTALLA COMPLETA ───── */
+    .screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      gap: 16px;
+    }
+    .screen.hidden { display: none; }
+
+    .empty-screen { color: var(--text-dim); text-align: center; }
+    .empty-screen .icon { font-size: 80px; margin-bottom: 20px; opacity: 0.3; }
+    .empty-screen h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    .empty-screen p { font-size: 18px; }
+
+    .loading-screen { color: var(--text-dim); font-size: 24px; }
+
+    /* ───── SCOREBOARD ───── */
+    .scoreboard {
+      width: 100%;
+      max-width: 1800px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tournament-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+    }
+    .tournament-name {
+      font-size: 24px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 700;
+    }
+    .matchup-label {
+      font-size: 18px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-weight: 600;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 0;
+      background: #000;
+      border: 2px solid #222;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+    }
+
+    /* ── PANEL DE EQUIPO (tarjeta centrada) ── */
+    .team-side {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: #000;
+    }
+
+    .team-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .team-card .logo {
+      width: 160px;
+      height: 160px;
+      border-radius: 16px;
+      background: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 2px solid #2a2a2a;
+      flex-shrink: 0;
+    }
+    .team-card .logo img { width: 86%; height: 86%; object-fit: contain; }
+    .team-card .logo .ph { font-size: 52px; font-weight: 800; color: #555; }
+
+    .team-card .name {
+      font-size: 36px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      line-height: 1.1;
+      max-width: 300px;
+    }
+
+    .team-card .short {
+      font-size: 14px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 600;
+      margin-top: -8px;
+    }
+
+    /* Badge de faltas */
+    .fouls-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 14px 36px;
+      min-width: 150px;
+      margin-top: 4px;
+      transition: background 0.35s, border-color 0.35s;
+    }
+    .fouls-badge .fouls-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #555;
+      font-weight: 700;
+    }
+    .fouls-badge .fouls-count {
+      font-size: 60px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: #ffffff;
+      line-height: 1;
+      transition: color 0.35s;
+    }
+    .fouls-badge .bonus-label {
+      display: none;
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: #f87171;
+      margin-top: 4px;
+    }
+    .fouls-badge.warning {
+      background: rgba(245,158,11,0.1);
+      border-color: rgba(245,158,11,0.3);
+    }
+    .fouls-badge.warning .fouls-count { color: var(--accent); }
+    .fouls-badge.critical {
+      background: rgba(220,38,38,0.12);
+      border-color: rgba(220,38,38,0.35);
+    }
+    .fouls-badge.critical .fouls-count { color: #f87171; }
+    .fouls-badge.critical .bonus-label { display: block; }
+
+    /* Centro: marcador + vs */
+    .score-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 40px;
+      background: #000;
+      border-left: 1px solid #1f1f1f;
+      border-right: 1px solid #1f1f1f;
+      min-width: 360px;
+    }
+    .score-numbers {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .score-numbers .score {
+      font-size: 220px;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      color: #ffffff;
+      min-width: 220px;
+      text-align: center;
+    }
+    .score-numbers .score.winning {
+      color: #ffffff;
+      text-shadow: 0 0 40px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.3);
+    }
+    .score-numbers .dash {
+      font-size: 80px;
+      color: #333;
+      font-weight: 300;
+    }
+    .quarter-info {
+      margin-top: 12px;
+      text-align: center;
+    }
+    .quarter-info .quarter {
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+    }
+    .quarter-info .clock {
+      font-size: 80px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin-top: 4px;
+      line-height: 1;
+    }
+    .quarter-info .clock.idle { color: #444; }
+
+    /* Estilo del final del partido */
+    .final-banner {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.15), transparent);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .final-banner.show { display: block; }
+    .final-banner .label {
+      font-size: 22px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #34d399;
+    }
+    .final-banner .winner {
+      font-size: 18px;
+      color: var(--text-dim);
+      margin-top: 6px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Footer info */
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-mute);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding-top: 8px;
+    }
+    .footer .sep { color: var(--border-2); margin: 0 12px; }
+
+    /* Responsive */
+    @media (max-width: 1400px) {
+      .score-numbers .score { font-size: 160px; min-width: 170px; }
+      .quarter-info .clock { font-size: 64px; }
+      .team-card .logo { width: 130px; height: 130px; }
+      .team-card .name { font-size: 30px; }
+      .fouls-badge .fouls-count { font-size: 48px; }
+      .score-center { min-width: 300px; }
+    }
+    @media (max-width: 1100px) {
+      .score-numbers .score { font-size: 110px; min-width: 120px; }
+      .quarter-info .clock { font-size: 50px; }
+      .team-card .logo { width: 100px; height: 100px; }
+      .team-card .name { font-size: 24px; }
+      .fouls-badge { padding: 10px 24px; min-width: 110px; }
+      .fouls-badge .fouls-count { font-size: 40px; }
+      .score-center { min-width: 220px; padding: 20px 20px; }
+    }
+    @media (max-width: 760px) {
+      .screen { padding: 8px; }
+      .tournament-bar { flex-direction: column; gap: 4px; }
+      .tournament-name { font-size: 14px; }
+      .board { grid-template-columns: 1fr; }
+      .score-center { border-left: none; border-right: none; border-top: 1px solid #1f1f1f; border-bottom: 1px solid #1f1f1f; }
+      .team-side { padding: 24px 16px; }
+      .team-card .logo { width: 80px; height: 80px; border-radius: 10px; }
+      .team-card .name { font-size: 20px; }
+      .fouls-badge { padding: 8px 20px; min-width: 90px; }
+      .fouls-badge .fouls-count { font-size: 32px; }
+      .score-numbers .score { font-size: 72px; min-width: 80px; }
+      .quarter-info .clock { font-size: 38px; }
+      .game-selector { top: 8px; right: 8px; left: 8px; }
+    }
+
+    /* ── Pantalla de espera (modo cancha) ── */
+    .waiting-screen { text-align: center; }
+    .waiting-screen .w-icon {
+      font-size: 100px; margin-bottom: 32px; opacity: 0.35;
+      display: block;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-14px); }
+    }
+    .waiting-screen .w-title {
+      font-size: 36px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--accent); margin-bottom: 12px;
+    }
+    .waiting-screen .w-court {
+      font-size: 20px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.25em; color: var(--text-dim); margin-bottom: 40px;
+    }
+    .waiting-screen .w-msg {
+      font-size: 28px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.2em; color: var(--text-mute);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .waiting-screen .w-dots::after {
+      content: '';
+      animation: dots 1.5s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: ''; }
+      33%  { content: '.'; }
+      66%  { content: '..'; }
+      100% { content: '...'; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Selector de partido (esquina superior) -->
+  <div class="game-selector" id="gameSelector" style="display:none;">
+    <label for="gameSelect">Partido:</label>
+    <select id="gameSelect"></select>
+    <span class="badge" id="statusBadge"></span>
+  </div>
+
+  <!-- Loading inicial -->
+  <div class="screen" id="loadingScreen">
+    <div class="loading-screen">Cargando marcador…</div>
+  </div>
+
+  <!-- Empty: no hay partidos -->
+  <div class="screen hidden" id="emptyScreen">
+    <div class="empty-screen">
+      <div class="icon">🏀</div>
+      <h1>Sin partidos para mostrar</h1>
+      <p>No hay partidos programados o en curso en este momento.</p>
+    </div>
+  </div>
+
+  <!-- Waiting: modo cancha, sin partido live aún -->
+  <div class="screen hidden" id="waitingScreen">
+    <div class="waiting-screen">
+      <span class="w-icon">🏀</span>
+      <div class="w-title" id="waitingTournament">Torneo Exalumnos</div>
+      <div class="w-court" id="waitingCourt">Cancha</div>
+      <div class="w-msg">Esperando partido<span class="w-dots"></span></div>
+    </div>
+  </div>
+
+  <!-- Marcador -->
+  <div class="screen hidden" id="scoreboardScreen">
+    <div class="scoreboard">
+      <div class="tournament-bar">
+        <div class="tournament-name" id="tournamentName">—</div>
+        <div class="matchup-label" id="matchupLabel">—</div>
+      </div>
+      <div class="board">
+        <!-- Local -->
+        <div class="team-side home" id="homeSide">
+          <div class="team-card">
+            <div class="logo" id="homeLogo"></div>
+            <div class="name" id="homeName">—</div>
+            <div class="short" id="homeShort">—</div>
+            <div class="fouls-badge" id="homeFoulsBadge">
+              <span class="fouls-label">FALTAS</span>
+              <span class="fouls-count" id="homeFouls">0</span>
+              <span class="bonus-label">⚠ BONUS</span>
+            </div>
+          </div>
+        </div>
+        <!-- Centro -->
+        <div class="score-center">
+          <div class="score-numbers">
+            <div class="score" id="homeScore">0</div>
+            <div class="dash">—</div>
+            <div class="score" id="awayScore">0</div>
+          </div>
+          <div class="quarter-info">
+            <div class="quarter" id="quarterLabel">C1</div>
+            <div class="clock" id="clockDisplay">10:00</div>
+          </div>
+        </div>
+        <!-- Visitante -->
+        <div class="team-side away" id="awaySide">
+          <div class="team-card">
+            <div class="logo" id="awayLogo"></div>
+            <div class="name" id="awayName">—</div>
+            <div class="short" id="awayShort">—</div>
+            <div class="fouls-badge" id="awayFoulsBadge">
+              <span class="fouls-label">FALTAS</span>
+              <span class="fouls-count" id="awayFouls">0</span>
+              <span class="bonus-label">⚠ BONUS</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="final-banner" id="finalBanner">
+        <div class="label">Final</div>
+        <div class="winner" id="finalWinner">—</div>
+      </div>
+      <div class="footer">
+        <span id="liveStatus">EN VIVO</span>
+        <span class="sep">·</span>
+        <span>Torneo Exalumnos</span>
+        <span class="sep">·</span>
+        <span id="lastUpdate">—</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+    // ──────────────────────────────────────────────
+    // Estado
+    // ──────────────────────────────────────────────
+    const S = {
+      games: [],
+      currentGameId: null,
+      home: null, away: null,
+      events: [],
+      pointMap: {
+        'points_1': 1, 'points_2': 2, 'points_3': 3,
+        'points_minus_1': -1, 'points_minus_2': -2, 'points_minus_3': -3,
+      },
+      foulEvents: new Set(['foul_personal', 'foul_technical', 'foul_flagrant']),
+      channel: null,
+      courtMode: null,   // null | '1' | '2'
+      courtPollInterval: null,
+      // Configuración del torneo activo (duración de cuartos y OT)
+      tournament: { periodMin: 10, otMin: 5 },
+      // Countdown local del reloj
+      clockInterval: null,
+      clockSeconds: null,
+    };
+
+    // ──────────────────────────────────────────────
+    // Helpers de períodos — duplicados en admin.html a propósito (sin build step)
+    // ──────────────────────────────────────────────
+    function quarterLabel(q) {
+      return q >= 5 ? `OT${q - 4}` : `C${q}`;
+    }
+    function quarterSeconds(q) {
+      return q >= 5
+        ? (S.tournament.otMin || 5) * 60
+        : (S.tournament.periodMin || 10) * 60;
+    }
+
+    // ──────────────────────────────────────────────
+    // Init
+    // ──────────────────────────────────────────────
+    (async () => {
+      const params = new URLSearchParams(location.search);
+      const urlGameId = params.get('game');
+      const urlCourt = params.get('court'); // '1' o '2'
+
+      try {
+        // Cargar duración de cuartos/OT del torneo activo. Si falla, defaults 10/5.
+        try {
+          const t = await loadActiveTournament();
+          S.tournament = {
+            periodMin: t.period_duration_minutes || 10,
+            otMin: t.ot_duration_minutes || 5,
+          };
+        } catch { /* defaults ya seteados */ }
+
+        if (urlCourt === '1' || urlCourt === '2') {
+          S.courtMode = urlCourt;
+          await startCourtMode(urlCourt);
+        } else {
+          await loadGames();
+          if (!S.games.length) { showScreen('empty'); return; }
+          const initial = S.games.find(g => g.id === urlGameId)
+            || S.games.find(g => g.status === 'in_progress')
+            || S.games[0];
+          selectGame(initial.id);
+          showSelector();
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('loadingScreen').innerHTML =
+          `<div class="empty-screen"><h1>Error de conexión</h1><p>${escapeHtml(err.message)}</p></div>`;
+      }
+    })();
+
+    // ──────────────────────────────────────────────
+    // Modo cancha (?court=1 / ?court=2)
+    // ──────────────────────────────────────────────
+    async function startCourtMode(courtNum) {
+      const courtValue = `court_${courtNum}`;
+      const courtLabel = `Cancha ${courtNum}`;
+
+      const game = await findLiveGameForCourt(courtValue);
+      if (game) {
+        S.games = [game];
+        selectGame(game.id);
+        // No mostrar selector en modo cancha
+      } else {
+        showWaiting(courtLabel);
+        S.courtPollInterval = setInterval(async () => {
+          try {
+            const g = await findLiveGameForCourt(courtValue);
+            if (g) {
+              clearInterval(S.courtPollInterval);
+              S.courtPollInterval = null;
+              S.games = [g];
+              selectGame(g.id);
+            }
+          } catch (e) { console.warn('Poll error:', e); }
+        }, 10000);
+      }
+    }
+
+    async function findLiveGameForCourt(courtValue) {
+      const { data, error } = await sb
+        .from('games')
+        .select(`
+          id, status, game_date, home_score, away_score, tournament_id, court, round,
+          clock_running, clock_seconds, clock_updated_at,
+          tournaments(name),
+          home_team:team_home_id(id, name, short_name, primary_color, secondary_color, logo_url),
+          away_team:team_away_id(id, name, short_name, primary_color, secondary_color, logo_url)
+        `)
+        .eq('court', courtValue)
+        .eq('status', 'in_progress')
+        .order('game_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data || null;
+    }
+
+    function showWaiting(courtLabel) {
+      document.getElementById('waitingCourt').textContent = courtLabel;
+      showScreen('waiting');
+    }
+
+    // ──────────────────────────────────────────────
+    // Carga de partidos
+    // ──────────────────────────────────────────────
+    async function loadGames() {
+      const { data, error } = await sb
+        .from('games')
+        .select(`
+          id, status, game_date, home_score, away_score, tournament_id,
+          clock_running, clock_seconds, clock_updated_at,
+          tournaments(name),
+          home_team:team_home_id(id, name, short_name, primary_color, secondary_color, logo_url),
+          away_team:team_away_id(id, name, short_name, primary_color, secondary_color, logo_url)
+        `)
+        .order('game_date', { ascending: false });
+      if (error) throw error;
+      S.games = data || [];
+      populateSelect();
+    }
+
+    function populateSelect() {
+      const sel = document.getElementById('gameSelect');
+      sel.innerHTML = S.games.map(g => {
+        const ht = g.home_team?.short_name || '?';
+        const at = g.away_team?.short_name || '?';
+        const t = g.tournaments?.name || '—';
+        return `<option value="${g.id}">${escapeHtml(ht)} vs ${escapeHtml(at)} · ${escapeHtml(t)}</option>`;
+      }).join('');
+    }
+
+    function showSelector() {
+      document.getElementById('gameSelector').style.display = 'flex';
+    }
+
+    document.getElementById('gameSelect').addEventListener('change', (e) => {
+      selectGame(e.target.value);
+    });
+
+    // ──────────────────────────────────────────────
+    // Selección de partido
+    // ──────────────────────────────────────────────
+    function selectGame(gameId) {
+      if (S.currentGameId === gameId && S.events.length) {
+        // Ya cargado, no re-suscribir
+        return;
+      }
+      S.currentGameId = gameId;
+      document.getElementById('gameSelect').value = gameId;
+      if (S.channel) {
+        sb.removeChannel(S.channel);
+        S.channel = null;
+      }
+      loadGameAndEvents().then(() => {
+        showScreen('scoreboard');
+        subscribeRealtime();
+      }).catch(err => {
+        console.error(err);
+        showScreen('empty');
+      });
+    }
+
+    async function loadGameAndEvents() {
+      const game = S.games.find(g => g.id === S.currentGameId);
+      if (!game) throw new Error('Partido no encontrado');
+
+      S.home = game.home_team;
+      S.away = game.away_team;
+
+      // Eventos
+      const { data, error } = await sb
+        .from('game_events')
+        .select('id, event_type, team_id, clock_seconds, period, created_at, is_undone')
+        .eq('game_id', S.currentGameId)
+        .order('id', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      S.events = data || [];
+
+      // Calcular score, faltas y estado del reloj
+      const derived = deriveFromEvents(S.events);
+      S.homeFouls = derived.fouls[S.home.id] || 0;
+      S.awayFouls = derived.fouls[S.away.id] || 0;
+      S.homeScore = derived.score[S.home.id] || 0;
+      S.awayScore = derived.score[S.away.id] || 0;
+      S.lastClock = derived.lastClock;       // segundos
+      S.lastPeriod = derived.lastPeriod;     // 1–5
+      S.lastActivity = derived.lastActivity;
+
+      renderScoreboard(game);
+      // syncClock se llama solo desde el handler realtime de UPDATE en games.
+      // Llamarlo acá reiniciaría el countdown local en cada anotación, desincronizando
+      // el reloj del scoreboard respecto al admin.
+    }
+
+    function deriveFromEvents(events) {
+      // events vienen DESC (más reciente primero). Para acumular score en orden
+      // cronológico, recorremos en reversa.
+      const chrono = [...events].reverse();
+      const score = {};
+      const fouls = {};
+      let lastClock = null;
+      let lastPeriod = null;
+      let lastActivity = null;
+      for (const ev of chrono) {
+        if (ev.team_id && !ev.is_undone) {
+          if (S.pointMap[ev.event_type] != null) {
+            score[ev.team_id] = (score[ev.team_id] || 0) + S.pointMap[ev.event_type];
+          }
+          if (S.foulEvents.has(ev.event_type)) {
+            fouls[ev.team_id] = (fouls[ev.team_id] || 0) + 1;
+          }
+        }
+        // El "último clock" es del evento más reciente (events están en orden desc → el [0] en chrono es el más antiguo)
+        // se sobreescribe en cada iteración hasta quedar con el último (más reciente)
+        lastClock = ev.clock_seconds;
+        lastPeriod = ev.period;
+        lastActivity = ev.created_at;
+      }
+      return { score, fouls, lastClock, lastPeriod, lastActivity };
+    }
+
+    // ──────────────────────────────────────────────
+    // Render
+    // ──────────────────────────────────────────────
+    function renderScoreboard(game) {
+      // Header
+      document.getElementById('tournamentName').textContent = game.tournaments?.name || '—';
+      document.getElementById('matchupLabel').textContent =
+        `${game.game_date ? formatDate(game.game_date) : ''}`;
+
+      // Status badge
+      const sb = document.getElementById('statusBadge');
+      sb.className = 'badge ' + (game.status || 'scheduled');
+      sb.textContent = statusLabel(game.status);
+
+      // Teams
+      paintTeam('home', S.home, S.homeScore, S.homeFouls);
+      paintTeam('away', S.away, S.awayScore, S.awayFouls);
+
+      // Scores con highlight al ganador (si el partido está terminado)
+      const hsEl = document.getElementById('homeScore');
+      const asEl = document.getElementById('awayScore');
+      hsEl.classList.remove('winning');
+      asEl.classList.remove('winning');
+      if (game.status === 'completed' || game.status === 'in_progress') {
+        if (S.homeScore > S.awayScore) hsEl.classList.add('winning');
+        else if (S.awayScore > S.homeScore) asEl.classList.add('winning');
+      }
+
+      // Quarter + clock
+      const period = S.lastPeriod || 1;
+      document.getElementById('quarterLabel').textContent = quarterLabel(period);
+      // Solo actualizar el reloj si NO hay un countdown local corriendo.
+      // Si hay countdown activo, syncClock lo maneja; aquí solo pintamos
+      // el valor del último evento como fallback inicial.
+      if (!S.clockInterval) {
+        const clockEl = document.getElementById('clockDisplay');
+        if (S.lastClock != null) {
+          clockEl.textContent = formatClock(S.lastClock);
+          clockEl.classList.remove('idle');
+        } else {
+          const dur = quarterSeconds(period);
+          clockEl.textContent = formatClock(dur);
+          clockEl.classList.add('idle');
+        }
+      }
+
+      // Live status footer
+      const liveEl = document.getElementById('liveStatus');
+      if (game.status === 'in_progress') {
+        liveEl.textContent = 'EN VIVO';
+        liveEl.style.color = '#fca5a5';
+      } else if (game.status === 'completed') {
+        liveEl.textContent = 'FINALIZADO';
+        liveEl.style.color = '#34d399';
+      } else {
+        liveEl.textContent = 'PROGRAMADO';
+        liveEl.style.color = 'var(--text-mute)';
+      }
+      document.getElementById('lastUpdate').textContent = S.lastActivity
+        ? 'Última acción ' + formatRelative(S.lastActivity)
+        : 'Sin acciones';
+
+      // Final banner
+      const banner = document.getElementById('finalBanner');
+      const winner = document.getElementById('finalWinner');
+      if (game.status === 'completed') {
+        banner.classList.add('show');
+        if (S.homeScore > S.awayScore) {
+          winner.textContent = `🏆 ${S.home.name} gana`;
+        } else if (S.awayScore > S.homeScore) {
+          winner.textContent = `🏆 ${S.away.name} gana`;
+        } else {
+          winner.textContent = 'Empate';
+        }
+      } else {
+        banner.classList.remove('show');
+      }
+    }
+
+    function paintTeam(side, team, score, fouls) {
+      if (!team) return;
+      const logoEl = document.getElementById(side + 'Logo');
+      if (team.logo_url) {
+        logoEl.innerHTML = `<img src="${escapeAttr(team.logo_url)}" alt="${escapeAttr(team.short_name)}" />`;
+        logoEl.style.background = '#1a1a1a';
+      } else {
+        logoEl.innerHTML = `<span class="ph">${escapeHtml(team.short_name)}</span>`;
+        logoEl.style.background = team.primary_color || '#1a1a1a';
+      }
+
+      document.getElementById(side + 'Name').textContent = team.name;
+      document.getElementById(side + 'Short').textContent = team.short_name;
+      document.getElementById(side + 'Score').textContent = score;
+
+      document.getElementById(side + 'Fouls').textContent = fouls;
+      document.getElementById(side + 'FoulsBadge').className =
+        'fouls-badge' + (fouls >= 5 ? ' critical' : fouls >= 3 ? ' warning' : '');
+    }
+
+    // ──────────────────────────────────────────────
+    // Realtime
+    // ──────────────────────────────────────────────
+    function subscribeRealtime() {
+      S.channel = sb
+        .channel(`scoreboard:game:${S.currentGameId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'game_events', filter: `game_id=eq.${S.currentGameId}` },
+          async () => {
+            // Recalcular todo desde cero
+            await loadGameAndEvents();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${S.currentGameId}` },
+          async () => {
+            const { data } = await sb
+              .from('games')
+              .select(`*, clock_running, clock_seconds, clock_updated_at, tournaments(name), home_team:team_home_id(id, name, short_name, primary_color, logo_url), away_team:team_away_id(id, name, short_name, primary_color, logo_url)`)
+              .eq('id', S.currentGameId)
+              .single();
+            if (data) {
+              const idx = S.games.findIndex(g => g.id === data.id);
+              if (idx >= 0) S.games[idx] = data;
+              renderScoreboard(data);
+              syncClock(data);
+              if (S.courtMode && data.status === 'completed' && !S.courtPollInterval) {
+                setTimeout(() => startCourtMode(S.courtMode), 15000);
+              }
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    // ──────────────────────────────────────────────
+    // Reloj local sincronizado
+    // ──────────────────────────────────────────────
+
+    // Llamado cada vez que llega un UPDATE de games con clock_running/clock_seconds.
+    // Arranca o para el countdown local para que el marcador muestre el reloj en vivo.
+    function syncClock(gameData) {
+      // Guard: si clock_updated_at viene malformado, no tocar el reloj actual.
+      if (gameData.clock_updated_at) {
+        const t = new Date(gameData.clock_updated_at);
+        if (isNaN(t.getTime())) return;
+      }
+      stopLocalClock();
+      const secs = gameData.clock_seconds ?? null;
+      const running = gameData.clock_running ?? false;
+      const updatedAt = gameData.clock_updated_at ? new Date(gameData.clock_updated_at) : null;
+
+      if (secs == null) return;
+
+      if (running && updatedAt) {
+        // Ajustar por el tiempo transcurrido entre que el admin actualizó y ahora
+        const elapsed = Math.round((Date.now() - updatedAt.getTime()) / 1000);
+        S.clockSeconds = Math.max(0, secs - elapsed);
+      } else {
+        S.clockSeconds = secs;
+        updateClockDisplay();
+        return;
+      }
+
+      updateClockDisplay();
+      S.clockInterval = setInterval(() => {
+        S.clockSeconds = Math.max(0, S.clockSeconds - 1);
+        updateClockDisplay();
+        if (S.clockSeconds === 0) stopLocalClock();
+      }, 1000);
+    }
+
+    function stopLocalClock() {
+      if (S.clockInterval) { clearInterval(S.clockInterval); S.clockInterval = null; }
+    }
+
+    function updateClockDisplay() {
+      const clockEl = document.getElementById('clockDisplay');
+      if (!clockEl) return;
+      if (S.clockSeconds != null) {
+        clockEl.textContent = formatClock(S.clockSeconds);
+        clockEl.classList.remove('idle');
+      }
+    }
+
+    // ──────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────
+    function showScreen(name) {
+      ['loadingScreen', 'emptyScreen', 'waitingScreen', 'scoreboardScreen'].forEach(id => {
+        document.getElementById(id).classList.toggle('hidden', id !== name + 'Screen');
+      });
+    }
+
+    function statusLabel(s) {
+      const map = {
+        scheduled: 'PRÓXIMO',
+        in_progress: 'EN VIVO',
+        completed: 'FINAL',
+        cancelled: 'CANCELADO',
+      };
+      return map[s] || (s || '').toUpperCase();
+    }
+
+    function formatClock(s) {
+      s = Math.max(0, s | 0);
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleString('es-MX', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+        });
+      } catch { return iso; }
+    }
+
+    function formatRelative(iso) {
+      try {
+        const d = new Date(iso);
+        const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diff < 60) return `hace ${diff}s`;
+        if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
+        return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      } catch { return ''; }
+    }
+
+    function escapeHtml(s) {
+      return (s ?? '').toString()
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+  </script>
+</body>
+</html>

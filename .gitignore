@@ -1,0 +1,22 @@
+# Credenciales — config.js SÍ se sube (anon key pública de Supabase, RLS protege)
+# Solo ignorar credenciales privadas si se agregan en el futuro
+*.env
+.env*
+secrets.js
+config.local.js
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Node (si se usa en algún build tool)
+node_modules/
+
+# Claude / memoria de sesión
+.claude/
+MEMORY.md

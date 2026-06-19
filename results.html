@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resultado — Torneo Exalumnos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100vh;
+      font-family: 'Barlow Condensed', sans-serif;
+      background: #0a0a0a;
+      color: #f5f5f5;
+      letter-spacing: 0.02em;
+    }
+    body {
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ───── HEADER ───── */
+    .page-header {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .page-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .page-header .subtitle {
+      font-size: 14px;
+      color: #a3a3a3;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    /* ───── CONTROLES ───── */
+    .controls {
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      background: #131313;
+      border: 1px solid #262626;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    @media (max-width: 720px) { .controls { grid-template-columns: 1fr; } }
+
+    .form-field { display: flex; flex-direction: column; gap: 6px; }
+    .form-field label {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #a3a3a3;
+      font-weight: 600;
+    }
+    select {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      color: #f5f5f5;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    select:focus { outline: none; border-color: #f59e0b; }
+
+    .btn {
+      background: #f59e0b;
+      color: #0a0a0a;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn:hover:not(:disabled) { background: #fbbf24; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ───── TARJETA 1080×1080 ───── */
+    .card-wrap {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .card-wrap .hint {
+      font-size: 13px;
+      color: #6b7280;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .card-stage {
+      width: 540px;
+      height: 540px;
+      max-width: 100%;
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid #262626;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+    }
+    /* La tarjeta real va a 1080×1080 y se escala al 50% para preview */
+    .card {
+      width: 1080px;
+      height: 1080px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: scale(0.5);
+      transform-origin: top left;
+      background: linear-gradient(160deg, #1a1a1a 0%, #0a0a0a 50%, #050505 100%);
+      color: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      padding: 80px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Decoración de fondo: dos blobs con los colores de los equipos */
+    .card-bg-blob {
+      position: absolute;
+      width: 720px;
+      height: 720px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .card-bg-blob.home { top: -360px; left: -240px; }
+    .card-bg-blob.away { bottom: -360px; right: -240px; }
+
+    /* Marco amber superior */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 8px;
+      background: linear-gradient(90deg, transparent, #f59e0b, transparent);
+    }
+
+    .card-content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Top: torneo + final */
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .card-tournament {
+      font-size: 28px;
+      color: #f59e0b;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 700;
+    }
+    .card-final-label {
+      font-size: 22px;
+      color: #34d399;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 800;
+      padding: 8px 20px;
+      border: 2px solid #34d399;
+      border-radius: 999px;
+    }
+
+    /* Centro: layout diagonal con pelota y VS */
+    .card-diagonal {
+      flex: 1;
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+    /* Esquinas: home arriba-izq, away abajo-der */
+    .diag-corner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .diag-corner.home {
+      grid-column: 1; grid-row: 1;
+      align-self: start; justify-self: start;
+    }
+    .diag-corner.away {
+      grid-column: 2; grid-row: 2;
+      align-self: end; justify-self: end;
+    }
+    .diag-logo {
+      width: 200px;
+      height: 200px;
+      border-radius: 24px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 3px solid #333;
+    }
+    .diag-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .diag-logo .ph { font-size: 72px; font-weight: 800; color: #6b7280; }
+    .diag-score {
+      font-size: 140px;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      color: #f5f5f5;
+    }
+    .diag-corner.winner .diag-score { color: #f59e0b; }
+    .diag-name {
+      font-size: 32px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #f5f5f5;
+      max-width: 360px;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    /* Centro: pelota + VS */
+    .diag-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .diag-ball {
+      font-size: 200px;
+      line-height: 1;
+      filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .diag-vs {
+      position: relative;
+      z-index: 2;
+      font-size: 48px;
+      font-weight: 900;
+      color: #0a0a0a;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: #f59e0b;
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.5);
+    }
+
+    /* Footer: fecha + marca */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .card-date {
+      font-size: 22px;
+      color: #a3a3a3;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-weight: 600;
+    }
+    .card-brand {
+      font-size: 20px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 700;
+    }
+    .card-brand .mark {
+      color: #f59e0b;
+    }
+
+    /* Empty / loading de la tarjeta */
+    .card-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #6b7280;
+      font-size: 28px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+    .card-empty .icon { font-size: 120px; opacity: 0.3; }
+    .card-empty.hidden { display: none; }
+
+    /* Estados */
+    .loading, .empty-state, .error-state {
+      text-align: center;
+      padding: 40px 24px;
+      color: #a3a3a3;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #131313;
+      border: 1px solid #333;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .toast.success { border-color: #10b981; color: #6ee7b7; }
+    .toast.error { border-color: #dc2626; color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>Tarjeta de resultado</h1>
+    <div class="subtitle">1080 × 1080 · Instagram</div>
+  </div>
+
+  <div class="controls">
+    <div class="form-field">
+      <label for="gameSelect">Partido</label>
+      <select id="gameSelect">
+        <option value="">Cargando partidos…</option>
+      </select>
+    </div>
+    <button class="btn" id="downloadBtn" disabled>Descargar PNG</button>
+  </div>
+
+  <div class="card-wrap">
+    <div class="hint">Vista previa escalada al 50% — la descarga es 1080×1080</div>
+    <div class="card-stage">
+      <div class="card" id="card">
+        <!-- Blobs decorativos de fondo (se colorean dinámicamente) -->
+        <div class="card-bg-blob home" id="blobHome"></div>
+        <div class="card-bg-blob away" id="blobAway"></div>
+
+        <div class="card-content">
+          <div class="card-top">
+            <div class="card-tournament" id="cardTournament">—</div>
+            <div class="card-final-label" id="cardStatus">FINAL</div>
+          </div>
+
+          <!-- Layout diagonal: home arriba-izq, pelota+VS al centro, away abajo-der -->
+          <div class="card-diagonal">
+            <!-- HOME: arriba-izquierda -->
+            <div class="diag-corner home" id="homeTeam">
+              <div class="diag-logo" id="homeLogo">—</div>
+              <div class="diag-score" id="homeScore">0</div>
+              <div class="diag-name" id="homeName">—</div>
+            </div>
+
+            <!-- VS center con pelota -->
+            <div class="diag-center">
+              <div class="diag-ball">🏀</div>
+              <div class="diag-vs">VS</div>
+            </div>
+
+            <!-- AWAY: abajo-derecha -->
+            <div class="diag-corner away" id="awayTeam">
+              <div class="diag-logo" id="awayLogo">—</div>
+              <div class="diag-score" id="awayScore">0</div>
+              <div class="diag-name" id="awayName">—</div>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <div class="card-date" id="cardDate">—</div>
+            <div class="card-brand"><span class="mark">🏀</span> Torneo Exalumnos</div>
+          </div>
+        </div>
+
+        <div class="card-empty" id="cardEmpty">
+          <div class="icon">🏀</div>
+          <div>Selecciona un partido finalizado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-client.js"></script>
+  <!-- html2canvas para convertir DOM a PNG -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    // ──────────────────────────────────────────────
+    // Estado
+    // ──────────────────────────────────────────────
+    const S = {
+      games: [],
+      current: null, // { game, home, away, hs, as_ }
+    };
+
+    // ──────────────────────────────────────────────
+    // Init
+    // ──────────────────────────────────────────────
+    (async () => {
+      try {
+        await loadGames();
+        console.log('[results] S.games =', S.games);
+        // Pre-seleccionar si viene ?game=ID en la URL
+        const urlGameId = new URLSearchParams(location.search).get('game');
+        if (urlGameId) {
+          const sel = document.getElementById('gameSelect');
+          // Si la opción no existe en el select (p.ej. el partido se filtró
+          // por otro motivo), igual disparamos selectGame con el id; el find
+          // interno nos dirá si realmente está en S.games.
+          sel.value = urlGameId;
+          const found = S.games.find(x => x.id === urlGameId);
+          if (found) {
+            console.log('[results] preselect', urlGameId, '→', found.home_score, '-', found.away_score);
+            selectGame(urlGameId);
+          } else {
+            console.warn('[results] preselect miss: id', urlGameId, 'no está en S.games. IDs disponibles:', S.games.map(x => x.id));
+            toast('Ese partido no está en la lista', 'error');
+          }
+        }
+      } catch (err) {
+        console.error('[results] init error:', err);
+        document.getElementById('gameSelect').innerHTML =
+          `<option>Error: ${escapeHtml(err.message)}</option>`;
+      }
+    })();
+
+    async function loadGames() {
+      const { data, error } = await sb
+        .from('games')
+        .select(`
+          id, status, game_date, finished_at, home_score, away_score, tournament_id,
+          tournaments(name),
+          home_team:team_home_id(id, name, short_name, primary_color, logo_url),
+          away_team:team_away_id(id, name, short_name, primary_color, logo_url)
+        `)
+        .in('status', ['completed', 'in_progress'])
+        .order('game_date', { ascending: false });
+      if (error) throw error;
+      S.games = data || [];
+      console.log('[results] loadGames rows:', S.games.length, S.games.map(x => ({
+        id: x.id, status: x.status, hs: x.home_score, as: x.away_score,
+        ht: x.home_team?.short_name, at: x.away_team?.short_name,
+        htLogo: x.home_team?.logo_url, atLogo: x.away_team?.logo_url,
+      })));
+
+      const sel = document.getElementById('gameSelect');
+      if (!S.games.length) {
+        sel.innerHTML = `<option value="">No hay partidos finalizados aún</option>`;
+        return;
+      }
+      sel.innerHTML =
+        `<option value="">Selecciona un partido…</option>` +
+        S.games.map(g => {
+          const ht = g.home_team?.short_name || '?';
+          const at = g.away_team?.short_name || '?';
+          const t = g.tournaments?.name || '—';
+          const score = `${g.home_score ?? 0} - ${g.away_score ?? 0}`;
+          return `<option value="${g.id}">${escapeHtml(ht)} ${score} ${escapeHtml(at)} · ${escapeHtml(t)}</option>`;
+        }).join('');
+      sel.addEventListener('change', (e) => {
+        if (e.target.value) selectGame(e.target.value);
+        else clearCard();
+      });
+    }
+
+    function selectGame(gameId) {
+      const g = S.games.find(x => x.id === gameId);
+      if (!g) return;
+      S.current = g;
+      paintCard(g);
+      document.getElementById('downloadBtn').disabled = false;
+    }
+
+    function clearCard() {
+      S.current = null;
+      document.getElementById('cardEmpty').classList.remove('hidden');
+      document.getElementById('cardTournament').textContent = '—';
+      document.getElementById('cardStatus').textContent = 'FINAL';
+      document.getElementById('cardDate').textContent = '—';
+      document.getElementById('homeName').textContent = '—';
+      document.getElementById('homeScore').textContent = '0';
+      document.getElementById('awayName').textContent = '—';
+      document.getElementById('awayScore').textContent = '0';
+      document.getElementById('homeTeam').classList.remove('winner');
+      document.getElementById('awayTeam').classList.remove('winner');
+      document.getElementById('blobHome').style.background = 'transparent';
+      document.getElementById('blobAway').style.background = 'transparent';
+      document.getElementById('downloadBtn').disabled = true;
+    }
+
+    function paintCard(g) {
+      document.getElementById('cardEmpty').classList.add('hidden');
+      const ht = g.home_team || {};
+      const at = g.away_team || {};
+      console.log('[results] paintCard', { status: g.status, hs: g.home_score, as: g.away_score, ht: ht.short_name, at: at.short_name, htLogo: ht.logo_url, atLogo: at.logo_url });
+
+      document.getElementById('cardTournament').textContent = g.tournaments?.name || '—';
+      document.getElementById('cardStatus').textContent = g.status === 'completed' ? 'FINAL' : 'EN VIVO';
+
+      const dateSrc = g.finished_at || g.game_date;
+      document.getElementById('cardDate').textContent = dateSrc ? formatDate(dateSrc) : '—';
+
+      // Local
+      const hl = document.getElementById('homeLogo');
+      hl.innerHTML = ht.logo_url
+        ? `<img src="${escapeAttr(ht.logo_url)}" alt="${escapeAttr(ht.short_name)}" />`
+        : `<span class="ph">${escapeHtml(ht.short_name || '?')}</span>`;
+      hl.style.background = ht.primary_color || '#000';
+      document.getElementById('homeName').textContent = ht.name || 'Local';
+      document.getElementById('homeScore').textContent = g.home_score ?? 0;
+
+      // Visitante
+      const al = document.getElementById('awayLogo');
+      al.innerHTML = at.logo_url
+        ? `<img src="${escapeAttr(at.logo_url)}" alt="${escapeAttr(at.short_name)}" />`
+        : `<span class="ph">${escapeHtml(at.short_name || '?')}</span>`;
+      al.style.background = at.primary_color || '#000';
+      document.getElementById('awayName').textContent = at.name || 'Visitante';
+      document.getElementById('awayScore').textContent = g.away_score ?? 0;
+
+      // Winner highlight
+      const homeEl = document.getElementById('homeTeam');
+      const awayEl = document.getElementById('awayTeam');
+      homeEl.classList.remove('winner');
+      awayEl.classList.remove('winner');
+      if (g.status === 'completed') {
+        if ((g.home_score ?? 0) > (g.away_score ?? 0)) homeEl.classList.add('winner');
+        else if ((g.away_score ?? 0) > (g.home_score ?? 0)) awayEl.classList.add('winner');
+      }
+
+      // Blobs de fondo con los colores de los equipos
+      document.getElementById('blobHome').style.background = ht.primary_color || '#333';
+      document.getElementById('blobAway').style.background = at.primary_color || '#333';
+    }
+
+    // ──────────────────────────────────────────────
+    // Descarga PNG
+    // ──────────────────────────────────────────────
+    document.getElementById('downloadBtn').addEventListener('click', async () => {
+      if (!S.current) return;
+      const btn = document.getElementById('downloadBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generando…';
+      try {
+        // Truco: html2canvas captura el card a su tamaño real (1080×1080).
+        // Para que funcione con el scale(0.5), pintamos temporalmente a 1:1.
+        const card = document.getElementById('card');
+        const stage = document.querySelector('.card-stage');
+        const prevCardTransform = card.style.transform;
+        const prevStageSize = stage.style.width + '|' + stage.style.height;
+
+        card.style.transform = 'none';
+        card.style.position = 'static';
+        // html2canvas ignora transform; necesita ver el elemento en su tamaño nativo
+        // Renderizamos en un contenedor off-screen con tamaño 1080×1080
+        const off = document.createElement('div');
+        off.style.cssText = 'position:fixed; top:-10000px; left:-10000px; width:1080px; height:1080px; pointer-events:none;';
+        const clone = card.cloneNode(true);
+        clone.style.transform = 'none';
+        clone.style.position = 'static';
+        off.appendChild(clone);
+        document.body.appendChild(off);
+
+        const canvas = await html2canvas(clone, {
+          width: 1080,
+          height: 1080,
+          backgroundColor: null,
+          scale: 1,
+          useCORS: true,
+          logging: false,
+        });
+
+        document.body.removeChild(off);
+        card.style.transform = prevCardTransform;
+
+        // Disparar descarga
+        canvas.toBlob((blob) => {
+          if (!blob) { toast('Error al generar PNG', 'error'); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const ht = S.current.home_team?.short_name || 'local';
+          const at = S.current.away_team?.short_name || 'visitante';
+          a.download = `resultado-${ht}-vs-${at}-${(S.current.id || '').slice(0, 8)}.png`.toLowerCase();
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast('PNG descargado', 'success');
+        }, 'image/png');
+
+      } catch (err) {
+        console.error(err);
+        toast('Error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Descargar PNG';
+      }
+    });
+
+    // ──────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────
+    function formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleString('es-MX', {
+          day: '2-digit', month: 'long', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+      } catch { return iso; }
+    }
+
+    let toastTimer = null;
+    function toast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show ' + type;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function escapeHtml(s) {
+      return (s ?? '').toString()
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+  </script>
+</body>
+</html>
